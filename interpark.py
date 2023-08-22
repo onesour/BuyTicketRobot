@@ -7,12 +7,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-ticket_producer_url = "https://www.globalinterpark.com/detail/edetail?prdNo=23010177&dispNo=01003"
+ticket_producer_url = "https://www.globalinterpark.com/detail/edetail?prdNo=23011495&dispNo=01003"
 
 config = configparser.ConfigParser()
 config.read("./config_interpark.ini")
 user_email = config['user']['email']
 user_pwd = config['user']['password']
+want_ticket_number = 2
 
 driver_option = Options()
 driver_option.add_argument("--disable-notifications")
@@ -81,6 +82,20 @@ def select_date_and_next():
             break
         except Exception as e:
             print(type(e))
+    # Select time
+    time_span_xpath = '//*[@id="TagPlaySeq"]'
+    time_span_elm = chrome_driver.find_element(By.XPATH, time_span_xpath)
+    WebDriverWait(time_span_elm, 10).until(EC.element_to_be_clickable((By.TAG_NAME, "ul")))
+    time_ul = time_span_elm.find_element(By.TAG_NAME, "ul")
+    time_li = time_ul.find_elements(By.TAG_NAME, "li")
+    for li in time_li:
+        try:
+            print(f"li: {li.text}")
+            li_herf = li.find_element(By.TAG_NAME, "a")
+            li_herf.click()
+            break
+        except Exception as e:
+            print(type(e))
     chrome_driver.switch_to.default_content()
     next_btn_xpath = '//*[@id="LargeNextBtn"]'
     WebDriverWait(chrome_driver, 10).until(EC.element_to_be_clickable((By.XPATH, next_btn_xpath)))
@@ -99,6 +114,9 @@ def save_image():
     with open("s.jpg", "wb") as img_file:
         img_file.write(img_item.screenshot_as_png)
     res = ocr.classification(img_item.screenshot_as_png)
+    input_div_xpath = '//*[@id="divRecaptcha"]/div[1]/div[3]'
+    input_div_elm = chrome_driver.find_element(By.XPATH, input_div_xpath)
+    input_div_elm.click()
     input_recog_xpath = '//*[@id="txtCaptcha"]'
     WebDriverWait(chrome_driver, 10).until(EC.element_to_be_clickable((By.XPATH, input_recog_xpath)))
     input_recog_elm = chrome_driver.find_element(By.XPATH, input_recog_xpath)
@@ -109,8 +127,29 @@ def save_image():
     complete_btn_elm.click()
 
 
+def select_seat():
+    seat_frame_xpath = '//*[@id="ifrmSeatDetail"]'
+    WebDriverWait(chrome_driver, 10).until(EC.visibility_of_element_located((By.XPATH, seat_frame_xpath)))
+    chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, seat_frame_xpath))
+    seat_table_xpath = '//*[@id="TmgsTable"]'
+    table_elm = WebDriverWait(chrome_driver, 10).until(EC.visibility_of_element_located((By.XPATH, seat_table_xpath)))
+    td_elm = table_elm.find_elements(By.TAG_NAME, 'td')
+    selected_seat = 0
+    for td in td_elm:
+        img_elms = td.find_elements(By.TAG_NAME, 'img')
+        for img_elm in img_elms:
+            try:
+                img_elm.click()
+                selected_seat += 1
+                if selected_seat == want_ticket_number:
+                    break
+            except Exception as e:
+                print(f"Ex: {type(e)}")
+
+
 if __name__ == '__main__':
     login_interpark()
     switch_to_booking()
     select_date_and_next()
     save_image()
+    select_seat()
