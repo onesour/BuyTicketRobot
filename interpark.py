@@ -1,4 +1,5 @@
 import configparser
+import time
 
 import ddddocr
 from selenium import webdriver
@@ -125,6 +126,13 @@ def save_image():
     complete_btn_xpath = '//*[@id="divRecaptcha"]/div[1]/div[4]/a[2]'
     complete_btn_elm = chrome_driver.find_element(By.XPATH, complete_btn_xpath)
     complete_btn_elm.click()
+    for i in range(60):
+        print(input_div_elm.is_displayed())
+        if not input_div_elm.is_displayed():
+            break
+        time.sleep(1)
+    if input_div_elm.is_displayed():
+        raise Exception("Auto recognize Recaptcha failed. Please enter correct code in 1 min.")
 
 
 def select_seat():
@@ -139,12 +147,19 @@ def select_seat():
         img_elms = td.find_elements(By.TAG_NAME, 'img')
         for img_elm in img_elms:
             try:
-                img_elm.click()
-                selected_seat += 1
+                # Click available seat.
                 if selected_seat == want_ticket_number:
                     break
+                if 'stySeat' == img_elm.get_attribute("class"):
+                    img_elm.click()
+                    selected_seat += 1
             except Exception as e:
                 print(f"Ex: {type(e)}")
+    chrome_driver.switch_to.default_content()
+    chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
+    selected_seat_complete_xpath = '//*[@id="NextStepImage"]'
+    selected_seat_complete_btn = chrome_driver.find_element(By.XPATH, selected_seat_complete_xpath)
+    selected_seat_complete_btn.click()
 
 
 if __name__ == '__main__':
