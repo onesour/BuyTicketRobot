@@ -1,8 +1,11 @@
 import configparser
+import datetime
+import re
 import time
 
 import ddddocr
 from selenium import webdriver
+from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -66,6 +69,13 @@ def check_element_located(xpath, try_time=1):
             raise Exception("Try time max.")
         try_time += 1
         check_element_located(xpath, try_time)
+
+
+def check_time(target_time="2023/08/29 16:38"):
+    target_timestamp = datetime.datetime.strptime(target_time, "%Y/%d/%m %H%M").timestamp()
+    reach_time = False
+    while reach_time is False:
+        now_time = time.time()
 
 
 def switch_to_booking():
@@ -147,18 +157,21 @@ def recognize_code():
     complete_btn_elm = chrome_driver.find_element(By.XPATH, complete_btn_xpath)
     complete_btn_elm.click()
     click_time = 0
-    for i in range(60):
+    for i in range(default_timeout):
         print(input_div_elm.is_displayed())
         if not input_div_elm.is_displayed():
             break
         elif click_time == 0:
+            input_div_elm = WebDriverWait(chrome_driver, default_timeout).until(
+                EC.element_to_be_clickable((By.XPATH, input_div_xpath)))
+            input_div_elm.click()
             WebDriverWait(chrome_driver, default_timeout).until(
                 EC.element_to_be_clickable((By.XPATH, input_recog_xpath)))
             input_recog_elm.click()
             click_time += 1
         time.sleep(1)
     if input_div_elm.is_displayed():
-        raise Exception("Auto recognize Recaptcha failed. Please enter correct code in 1 min.")
+        raise Exception(f"Auto recognize Recaptcha failed. Please enter correct code in {default_timeout} seconds.")
 
 
 def select_seat():
@@ -172,23 +185,62 @@ def select_seat():
 
     td_elm = table_elm.find_elements(By.TAG_NAME, 'td')
     selected_seat = 0
-    for td in td_elm:
+    previous_one = ""
+    for i in range(len(td_elm)):
+        td = td_elm[i]
         img_elms = td.find_elements(By.TAG_NAME, 'img')
         for img_elm in img_elms:
             try:
                 # Click available seat.
                 if selected_seat == want_ticket_number:
-                    break
+                    chrome_driver.switch_to.default_content()
+                    chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
+                    selected_seat_complete_xpath = '//*[@id="NextStepImage"]'
+                    selected_seat_complete_btn = chrome_driver.find_element(By.XPATH, selected_seat_complete_xpath)
+                    selected_seat_complete_btn.click()
+                    has_ticket = check_web_alert()
+                    if has_ticket:
+                        break
+                    else:
+                        continue
                 if 'stySeat' == img_elm.get_attribute("class"):
-                    img_elm.click()
-                    selected_seat += 1
+                    onclick_value = img_elm.get_attribute("onclick")
+                    if previous_one == "":
+                        img_elm.click()
+                        previous_one = onclick_value
+                        selected_seat += 1
+                    else:
+                        previous_one_onclick = re.search(r"SelectSeat\(.*\)$", previous_one)
+                        previous_one_split = previous_one_onclick.group().split(",")
+                        select_seat_onclick = re.search(r"SelectSeat\(.*\)$", onclick_value)
+                        select_seat_str = select_seat_onclick.group()
+                        select_seat_str_split = select_seat_str.split(",")
+                        if previous_one_split[3] == select_seat_str_split[3] and abs(
+                                int(previous_one_split[4].strip().replace("'", "")) - int(
+                                    select_seat_str_split[4].strip().replace("'", ""))) == 1:
+                            img_elm.click()
+                            selected_seat += 1
+                        else:
+                            cancel_elm = td.find_element(By.XPATH,
+                                                         f"//img[@onclick=\"{previous_one}\"][@class=\"stySelectSeat\"]")
+                            cancel_elm.click()
+                            previous_one = ""
+                            selected_seat = 0
+                        print(f"previous: {previous_one_split}")
+                        print(select_seat_str_split)
             except Exception as e:
-                print(f"Ex: {type(e)}")
-    chrome_driver.switch_to.default_content()
-    chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
-    selected_seat_complete_xpath = '//*[@id="NextStepImage"]'
-    selected_seat_complete_btn = chrome_driver.find_element(By.XPATH, selected_seat_complete_xpath)
-    selected_seat_complete_btn.click()
+                print(f"Ex: {e}")
+
+
+def check_web_alert():
+    has_ticket = False
+    try:
+        WebDriverWait(chrome_driver, 2).until(EC.alert_is_present(), "Web alert didn't pop up.")
+        chrome_driver.switch_to.alert.accept()
+    except Exception as e:
+        print(e)
+        has_ticket = True
+    return has_ticket
 
 
 def seat_table():
@@ -216,7 +268,7 @@ def select_seat_count():
     chrome_driver.switch_to.default_content()
     next_btn_xpath = '//*[@id="SmallNextBtnImage"]'
     next_btn_elm = chrome_driver.find_element(By.XPATH, next_btn_xpath)
-    next_btn_elm.click()
+    ActionChains(chrome_driver).move_to_element(next_btn_elm).click(next_btn_elm).perform()
 
 
 def fill_personal_info():
@@ -310,7 +362,7 @@ if __name__ == '__main__':
     select_date_and_next()
     recognize_code()
     select_seat()
-    select_seat_count()
-    fill_personal_info()
-    input_payment()
-    check_payment()
+    # select_seat_count()
+    # fill_personal_info()
+    # input_payment()
+    # check_payment()
