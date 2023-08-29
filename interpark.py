@@ -2,6 +2,7 @@ import configparser
 import time
 
 import ddddocr
+from playsound import playsound
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -9,7 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 
-ticket_producer_url = "https://www.globalinterpark.com/detail/edetail?prdNo=23011495&dispNo=01003"
+ticket_producer_url = "https://www.globalinterpark.com/detail/edetail?prdNo=23011804&dispNo=01003"
 default_timeout = 120
 
 config = configparser.ConfigParser()
@@ -28,7 +29,7 @@ user_credit_card_num3 = config['user']['card_num3']
 user_credit_card_num4 = config['user']['card_num4']
 user_credit_card_month = config['user']['card_month']
 user_credit_card_year = config['user']['card_year']
-want_ticket_number = 2
+want_ticket_number = 1
 
 driver_option = Options()
 driver_option.add_argument("--disable-notifications")
@@ -75,7 +76,7 @@ def switch_to_booking():
     chrome_driver.switch_to.frame(chrome_driver.find_element(By.ID, product_frame_id))
     try:
         booking_btns_div_class = 'btn_Booking'
-        WebDriverWait(chrome_driver, default_timeout).until(
+        WebDriverWait(chrome_driver, 1).until(
             EC.visibility_of_element_located((By.CLASS_NAME, booking_btns_div_class)))
         booking_btn_elm = chrome_driver.find_element(By.CLASS_NAME, booking_btns_div_class)
     except:
@@ -120,9 +121,9 @@ def select_date_and_next():
         except Exception as e:
             print(type(e))
     chrome_driver.switch_to.default_content()
-    next_btn_xpath = '//*[@id="LargeNextBtn"]'
-    WebDriverWait(chrome_driver, default_timeout).until(EC.element_to_be_clickable((By.XPATH, next_btn_xpath)))
-    next_btn_elm = chrome_driver.find_element(By.XPATH, next_btn_xpath)
+    next_btn_xpath = "LargeNextBtn"
+    WebDriverWait(chrome_driver, default_timeout).until(EC.element_to_be_clickable((By.ID, next_btn_xpath)))
+    next_btn_elm = chrome_driver.find_element(By.ID, next_btn_xpath)
     next_btn_elm.click()
 
 
@@ -152,6 +153,7 @@ def recognize_code():
         if not input_div_elm.is_displayed():
             break
         elif click_time == 0:
+            input_div_elm.click()
             WebDriverWait(chrome_driver, default_timeout).until(
                 EC.element_to_be_clickable((By.XPATH, input_recog_xpath)))
             input_recog_elm.click()
@@ -162,7 +164,7 @@ def recognize_code():
 
 
 def select_seat():
-    seat_table()
+    is_selected = False
     seat_frame_xpath = '//*[@id="ifrmSeatDetail"]'
     WebDriverWait(chrome_driver, default_timeout).until(EC.visibility_of_element_located((By.XPATH, seat_frame_xpath)))
     chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, seat_frame_xpath))
@@ -173,25 +175,39 @@ def select_seat():
     td_elm = table_elm.find_elements(By.TAG_NAME, 'td')
     selected_seat = 0
     for td in td_elm:
-        img_elms = td.find_elements(By.TAG_NAME, 'img')
+        # img_elms = td.find_elements(By.TAG_NAME, 'img')
+        img_elms = td.find_elements(By.TAG_NAME, 'span')
+        print(f"td: {td}")
+        print(f"len: {len(img_elms)}")
         for img_elm in img_elms:
             try:
                 # Click available seat.
                 if selected_seat == want_ticket_number:
                     break
-                if 'stySeat' == img_elm.get_attribute("class"):
+                # if 'stySeat' == img_elm.get_attribute("class"):
+                #     img_elm.click()
+                #     selected_seat += 1
+                if img_elm.get_attribute("class") == "SeatN":
                     img_elm.click()
                     selected_seat += 1
             except Exception as e:
                 print(f"Ex: {type(e)}")
-    chrome_driver.switch_to.default_content()
-    chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
-    selected_seat_complete_xpath = '//*[@id="NextStepImage"]'
-    selected_seat_complete_btn = chrome_driver.find_element(By.XPATH, selected_seat_complete_xpath)
-    selected_seat_complete_btn.click()
+    if selected_seat == want_ticket_number:
+        is_selected = True
+        chrome_driver.switch_to.default_content()
+        chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
+        selected_seat_complete_xpath = '//*[@id="NextStepImage"]'
+        selected_seat_complete_btn = chrome_driver.find_element(By.XPATH, selected_seat_complete_xpath)
+        selected_seat_complete_btn.click()
+        return is_selected
+    else:
+        print("no ticket avaliable!!!!!!!!")
+        is_selected = False
+        return is_selected
 
 
 def seat_table():
+    is_select = False
     chrome_driver.switch_to.default_content()
     chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
     seat_menu_table_xpath = '//*[@id="SeatGradeInfo"]/div'
@@ -199,24 +215,56 @@ def seat_table():
         EC.visibility_of_element_located((By.XPATH, seat_menu_table_xpath)))
     tr_elms = table_elm.find_elements(By.TAG_NAME, 'tr')
     for tr in tr_elms:
-        li_elms = tr.find_elements(By.TAG_NAME, 'li')
-        for li in li_elms:
-            li.click()
+        chrome_driver.switch_to.default_content()
+        chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
+        print(f"tr: {tr}")
+        tr_id = tr.get_attribute("id")
+        if tr_id == "GradeRow":
+            area_elms = tr.find_elements(By.CLASS_NAME, 'select')
+            for area in area_elms:
+                area.click()
+                print(f"area: {area}")
+                box_elm = WebDriverWait(chrome_driver, default_timeout).until(
+                    EC.visibility_of_element_located((By.XPATH, '//*[@id="GradeDetail" and @style=""]')))
+                print(f"box_attr: {box_elm.get_attribute('seatgradename')}")
+                if box_elm.get_attribute('seatgradename') == "A座":
+                    WebDriverWait(box_elm, default_timeout).until(EC.visibility_of_element_located((By.TAG_NAME, 'li')))
+                    li_elm = box_elm.find_elements(By.TAG_NAME, 'li')
+                    for li in li_elm:
+                        chrome_driver.switch_to.default_content()
+                        chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
+                        time.sleep(0.3)
+                        print(f"li: {li.text}")
+                        try:
+                            small_area_a = li.find_element(By.TAG_NAME, 'a')
+                            print("a", small_area_a.text)
+                            small_area_a.click()
+                            is_selected = select_seat()
+                        except Exception as e:
+                            print(f"eeeeeeeeeee: {e}")
+                            break
+    return is_selected
 
 
 def select_seat_count():
     seat_count_frame = '//*[@id="ifrmBookStep"]'
     chrome_driver.switch_to.default_content()
     chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, seat_count_frame))
-    seat_count_selector_xpath = '//*[@id="PriceRow002"]/td[3]/select'
-    WebDriverWait(chrome_driver, default_timeout).until(
-        EC.visibility_of_element_located((By.XPATH, seat_count_selector_xpath)))
-    seat_count_selector = Select(chrome_driver.find_element(By.XPATH, seat_count_selector_xpath))
-    seat_count_selector.select_by_index(2)
-    chrome_driver.switch_to.default_content()
-    next_btn_xpath = '//*[@id="SmallNextBtnImage"]'
-    next_btn_elm = chrome_driver.find_element(By.XPATH, next_btn_xpath)
-    next_btn_elm.click()
+    seat_count_selector_xpath = '//*[@id="PriceRow001"]/td[3]/select'
+    seat_count_name = "SeatCount"
+    try:
+        WebDriverWait(chrome_driver, 1).until(
+            EC.visibility_of_element_located((By.NAME, seat_count_name)))
+    except:
+        print("excpettt")
+        select_seat_count()
+    else:
+        seat_count_selector = Select(chrome_driver.find_element(By.NAME, seat_count_name))
+        seat_count_selector.select_by_index(2)
+        chrome_driver.switch_to.default_content()
+        next_btn_xpath = '//*[@id="SmallNextBtnImage"]'
+        next_btn_elm = chrome_driver.find_element(By.XPATH, next_btn_xpath)
+        next_btn_elm.click()
 
 
 def fill_personal_info():
@@ -284,9 +332,9 @@ def input_payment():
     card_vaild_month_selector.select_by_value(user_credit_card_month)
     card_vaild_year_selector.select_by_value(user_credit_card_year)
     chrome_driver.switch_to.default_content()
-    next_btn_xpath = '//*[@id="SmallNextBtnImage"]'
-    next_btn_elm = chrome_driver.find_element(By.XPATH, next_btn_xpath)
-    next_btn_elm.click()
+    # next_btn_xpath = '//*[@id="SmallNextBtnImage"]'
+    # next_btn_elm = chrome_driver.find_element(By.XPATH, next_btn_xpath)
+    # next_btn_elm.click()
 
 
 def check_payment():
@@ -305,12 +353,16 @@ def check_payment():
 
 
 if __name__ == '__main__':
+    # playsound('./Alarm02.wav')
     login_interpark()
     switch_to_booking()
     select_date_and_next()
     recognize_code()
-    select_seat()
-    select_seat_count()
-    fill_personal_info()
-    input_payment()
-    check_payment()
+    is_selected = seat_table()
+    while is_selected is False:
+        is_selected = seat_table()
+    playsound('./Alarm02.wav')
+    # select_seat_count()
+    # fill_personal_info()
+    # input_payment()
+    # check_payment()
