@@ -41,19 +41,20 @@ chrome_driver.get(ticket_producer_url)
 
 
 def login_interpark():
-    login_btn_xpath = '/html/body/div[2]/div/div/ul/li[2]/a'
+    login_btn_xpath = '/html/body/main/nav/div/ul/li[1]/a'
     hint_btn = chrome_driver.find_element(By.XPATH, login_btn_xpath)
     hint_btn.click()
 
-    EMAIL_ID = 'memEmail'
-    email_input = chrome_driver.find_element(By.ID, EMAIL_ID)
+    EMAIL_xpath = "//input[@placeholder='Email address']"
+    email_input = WebDriverWait(chrome_driver, default_timeout).until(EC.visibility_of_element_located((By.XPATH, EMAIL_xpath)))
+    # email_input = chrome_driver.find_element(By.XPATH, EMAIL_xpath)
     email_input.send_keys(user_email)
-    PASSWORD_ID = 'memPass'
-    pwd_input = chrome_driver.find_element(By.ID, PASSWORD_ID)
+    PASSWORD_ID = '//input[@placeholder="Password"]'
+    pwd_input = chrome_driver.find_element(By.XPATH, PASSWORD_ID)
     pwd_input.send_keys(user_pwd)
 
-    LOGIN_ID = "sign_in"
-    login_btn = chrome_driver.find_element(By.ID, LOGIN_ID)
+    LOGIN_ID = "/html/body/main/div[3]/div[1]/div[1]/form/button"
+    login_btn = chrome_driver.find_element(By.XPATH, LOGIN_ID)
     login_btn.click()
 
 
