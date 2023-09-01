@@ -184,21 +184,21 @@ def select_seat():
             except Exception as e:
                 print(f"Select seat Exception: {e}")
     if selected_seat == want_ticket_number:
-        is_selected = True
+        is_select_want_ticket_num = True
         chrome_driver.switch_to.default_content()
         chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
         selected_seat_complete_xpath = '//*[@id="NextStepImage"]'
         selected_seat_complete_btn = chrome_driver.find_element(By.XPATH, selected_seat_complete_xpath)
         selected_seat_complete_btn.click()
-        return is_selected
+        return is_select_want_ticket_num
     else:
         print("No tickets avaliable in this area!!!!!!!!")
-        is_selected = False
-        return is_selected
+        is_select_want_ticket_num = False
+        return is_select_want_ticket_num
 
 
 def seat_table(is_already_click_area=False):
-    is_selected = False
+    is_seat_selected = False
     chrome_driver.switch_to.default_content()
     chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
     seat_menu_table_xpath = '//*[@id="SeatGradeInfo"]/div'
@@ -232,11 +232,17 @@ def seat_table(is_already_click_area=False):
                         small_area_a = li.find_element(By.TAG_NAME, 'a')
                         print(f"Scaning area: {small_area_a.text} ...")
                         small_area_a.click()
-                        is_selected = select_seat()
+                        is_seat_selected = select_seat()
+                        if is_seat_selected:
+                            break
                     except Exception as e:
                         print(f"Try area Exception: {e}")
                         break
-    return is_selected
+                if is_seat_selected:
+                    break
+        if is_seat_selected:
+            break
+    return is_seat_selected
 
 
 def select_seat_count():
@@ -346,7 +352,7 @@ def check_payment():
 
 
 if __name__ == '__main__':
-    playsound('./Alarm02.wav')
+    # playsound('./Alarm02.wav')
     login_interpark()
     switch_to_booking()
     select_date_and_next()
