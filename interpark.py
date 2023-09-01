@@ -10,8 +10,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 
-ticket_producer_url = "https://www.globalinterpark.com/detail/edetail?prdNo=23011804&dispNo=01003"
-default_timeout = 120
+ticket_producer_url = "https://www.globalinterpark.com/product/23011804?lang=zh"
+default_timeout = 3600
 
 config = configparser.ConfigParser()
 config.read("./config_interpark.ini")
@@ -45,29 +45,18 @@ def login_interpark():
     hint_btn = chrome_driver.find_element(By.XPATH, login_btn_xpath)
     hint_btn.click()
 
-    EMAIL_xpath = "//input[@placeholder='Email address']"
-    email_input = WebDriverWait(chrome_driver, default_timeout).until(EC.visibility_of_element_located((By.XPATH, EMAIL_xpath)))
-    # email_input = chrome_driver.find_element(By.XPATH, EMAIL_xpath)
+    email_xpath = "//input[@placeholder='Email address']"
+    email_input = WebDriverWait(chrome_driver, default_timeout).until(
+        EC.visibility_of_element_located((By.XPATH, email_xpath)))
     email_input.send_keys(user_email)
-    PASSWORD_ID = '//input[@placeholder="Password"]'
-    pwd_input = chrome_driver.find_element(By.XPATH, PASSWORD_ID)
+
+    password_xpath = '//input[@placeholder="Password"]'
+    pwd_input = chrome_driver.find_element(By.XPATH, password_xpath)
     pwd_input.send_keys(user_pwd)
 
-    LOGIN_ID = "/html/body/main/div[3]/div[1]/div[1]/form/button"
-    login_btn = chrome_driver.find_element(By.XPATH, LOGIN_ID)
+    login_btn_xpath = "/html/body/main/div[3]/div[1]/div[1]/form/button"
+    login_btn = chrome_driver.find_element(By.XPATH, login_btn_xpath)
     login_btn.click()
-
-
-def check_element_located(xpath, try_time=1):
-    try:
-        WebDriverWait(chrome_driver, default_timeout).until(EC.visibility_of_element_located((By.XPATH, xpath)))
-    except Exception as e:
-        print(e)
-    finally:
-        if try_time >= 3:
-            raise Exception("Try time max.")
-        try_time += 1
-        check_element_located(xpath, try_time)
 
 
 def switch_to_booking():
@@ -90,6 +79,7 @@ def switch_to_booking():
         for window_handle in chrome_driver.window_handles:
             if window_handle != original_window:
                 chrome_driver.switch_to.window(window_handle)
+                chrome_driver.maximize_window()
                 break
 
 
@@ -100,6 +90,7 @@ def select_date_and_next():
     date_table_xpath = '/html/body/div/div[1]/div[2]/table'
     date_table_elm = chrome_driver.find_element(By.XPATH, date_table_xpath)
     date_tds = date_table_elm.find_elements(By.TAG_NAME, "td")
+    date_tds.reverse()
     for td in date_tds:
         try:
             date_herf = td.find_element(By.TAG_NAME, "a")
@@ -165,7 +156,6 @@ def recognize_code():
 
 
 def select_seat():
-    is_selected = False
     seat_frame_xpath = '//*[@id="ifrmSeatDetail"]'
     WebDriverWait(chrome_driver, default_timeout).until(EC.visibility_of_element_located((By.XPATH, seat_frame_xpath)))
     chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, seat_frame_xpath))
@@ -179,7 +169,7 @@ def select_seat():
         # img_elms = td.find_elements(By.TAG_NAME, 'img')
         img_elms = td.find_elements(By.TAG_NAME, 'span')
         print(f"td: {td}")
-        print(f"len: {len(img_elms)}")
+        print(f"This area total seats: {len(img_elms)}")
         for img_elm in img_elms:
             try:
                 # Click available seat.
@@ -192,7 +182,7 @@ def select_seat():
                     img_elm.click()
                     selected_seat += 1
             except Exception as e:
-                print(f"Ex: {type(e)}")
+                print(f"Select seat Exception: {e}")
     if selected_seat == want_ticket_number:
         is_selected = True
         chrome_driver.switch_to.default_content()
@@ -202,13 +192,13 @@ def select_seat():
         selected_seat_complete_btn.click()
         return is_selected
     else:
-        print("no ticket avaliable!!!!!!!!")
+        print("No tickets avaliable in this area!!!!!!!!")
         is_selected = False
         return is_selected
 
 
-def seat_table():
-    is_select = False
+def seat_table(is_already_click_area=False):
+    is_selected = False
     chrome_driver.switch_to.default_content()
     chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
     seat_menu_table_xpath = '//*[@id="SeatGradeInfo"]/div'
@@ -223,27 +213,29 @@ def seat_table():
         if tr_id == "GradeRow":
             area_elms = tr.find_elements(By.CLASS_NAME, 'select')
             for area in area_elms:
+                print(f"area: {area.text}")
+                # if area.text == "A座":
+                #     print(f"Click {area.text}")
+                #     if is_already_click_area is False:
                 area.click()
-                print(f"area: {area}")
+                # else:
+                #     continue
                 box_elm = WebDriverWait(chrome_driver, default_timeout).until(
                     EC.visibility_of_element_located((By.XPATH, '//*[@id="GradeDetail" and @style=""]')))
-                print(f"box_attr: {box_elm.get_attribute('seatgradename')}")
-                if box_elm.get_attribute('seatgradename') == "A座":
-                    WebDriverWait(box_elm, default_timeout).until(EC.visibility_of_element_located((By.TAG_NAME, 'li')))
-                    li_elm = box_elm.find_elements(By.TAG_NAME, 'li')
-                    for li in li_elm:
-                        chrome_driver.switch_to.default_content()
-                        chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
-                        time.sleep(0.3)
-                        print(f"li: {li.text}")
-                        try:
-                            small_area_a = li.find_element(By.TAG_NAME, 'a')
-                            print("a", small_area_a.text)
-                            small_area_a.click()
-                            is_selected = select_seat()
-                        except Exception as e:
-                            print(f"eeeeeeeeeee: {e}")
-                            break
+                WebDriverWait(box_elm, default_timeout).until(EC.visibility_of_element_located((By.TAG_NAME, 'li')))
+                li_elm = box_elm.find_elements(By.TAG_NAME, 'li')
+                for li in li_elm:
+                    chrome_driver.switch_to.default_content()
+                    chrome_driver.switch_to.frame(chrome_driver.find_element(By.XPATH, '//*[@id="ifrmSeat"]'))
+                    time.sleep(0.3)
+                    try:
+                        small_area_a = li.find_element(By.TAG_NAME, 'a')
+                        print(f"Scaning area: {small_area_a.text} ...")
+                        small_area_a.click()
+                        is_selected = select_seat()
+                    except Exception as e:
+                        print(f"Try area Exception: {e}")
+                        break
     return is_selected
 
 
@@ -354,14 +346,14 @@ def check_payment():
 
 
 if __name__ == '__main__':
-    # playsound('./Alarm02.wav')
+    playsound('./Alarm02.wav')
     login_interpark()
     switch_to_booking()
     select_date_and_next()
     recognize_code()
     is_selected = seat_table()
     while is_selected is False:
-        is_selected = seat_table()
+        is_selected = seat_table(is_already_click_area=True)
     playsound('./Alarm02.wav')
     # select_seat_count()
     # fill_personal_info()
