@@ -4,3 +4,13 @@ This is a project for booking concert ticket automatilly. Support booking system
 
 ## Environment
 Python > 3.10
+
+Please download python packages in requirements.txt first. <br>
+請先下載python的相依套件。
+```
+pip install -r requirements.txt
+```
+
+## Warning
+This version is based on old ticket system.<br>
+此版本目前皆為建構在舊版售票系統。
