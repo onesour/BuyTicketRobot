@@ -65,11 +65,20 @@ def switch_to_booking():
     WebDriverWait(chrome_driver, default_timeout).until(EC.visibility_of_element_located((By.ID, product_frame_id)))
     chrome_driver.switch_to.frame(chrome_driver.find_element(By.ID, product_frame_id))
     try:
+        date_select_xpath = '//*[@id="play_date"]'
+        select_date_xpath = '//*[@id="play_date"]/option[3]'
+        WebDriverWait(chrome_driver, 10).until(
+            EC.visibility_of_element_located((By.XPATH, select_date_xpath)))
+        date_selector = Select(chrome_driver.find_element(By.XPATH, date_select_xpath))
+        date_selector.select_by_visible_text("2023-09-17 (星期日)")
+
+        time.sleep(1)
         booking_btns_div_class = 'btn_Booking'
         WebDriverWait(chrome_driver, 1).until(
             EC.visibility_of_element_located((By.CLASS_NAME, booking_btns_div_class)))
         booking_btn_elm = chrome_driver.find_element(By.CLASS_NAME, booking_btns_div_class)
-    except:
+    except Exception as e:
+        print(e)
         chrome_driver.refresh()
         switch_to_booking()
     else:
@@ -214,12 +223,12 @@ def seat_table(is_already_click_area=False):
             area_elms = tr.find_elements(By.CLASS_NAME, 'select')
             for area in area_elms:
                 print(f"area: {area.text}")
-                # if area.text == "A座":
-                #     print(f"Click {area.text}")
-                #     if is_already_click_area is False:
-                area.click()
-                # else:
-                #     continue
+                if area.text == "VIP Seats" or area.text == "R座":
+                    print(f"Click {area.text}")
+                    # if is_already_click_area is False:
+                    area.click()
+                else:
+                    continue
                 box_elm = WebDriverWait(chrome_driver, default_timeout).until(
                     EC.visibility_of_element_located((By.XPATH, '//*[@id="GradeDetail" and @style=""]')))
                 WebDriverWait(box_elm, default_timeout).until(EC.visibility_of_element_located((By.TAG_NAME, 'li')))
@@ -354,6 +363,16 @@ def check_payment():
 if __name__ == '__main__':
     # playsound('./Alarm02.wav')
     login_interpark()
+    # till_time = False
+    # result = time.strptime("2023/09/01 18:00:00", "%Y/%m/%d %H:%M:%S")
+    # result_second = time.mktime(result)
+    # print(result_second)
+    # while till_time is False:
+    #     now_time = time.time()
+    #     print(f"now time: {now_time}")
+    #     if now_time > result_second:
+    #         till_time = True
+    #         chrome_driver.refresh()
     switch_to_booking()
     select_date_and_next()
     recognize_code()
